@@ -161,6 +161,27 @@ textarea.fi{resize:vertical;min-height:68px;}
 .i-note{border:1px solid #ccc;padding:9px 12px;font-size:10.5px;color:#444;margin-bottom:16px;line-height:1.75;}
 .i-ftr{text-align:center;font-size:9px;color:#999;border-top:1px solid #ccc;padding-top:10px;}
 
+
+/* ─ 行ヘルパー（楽曲名・作業選択） ─ */
+.row-helper{background:#f4f8ff;border:1px solid #c0d0f0;padding:8px 10px;margin-bottom:4px;display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;}
+.row-helper .rh-f{display:flex;flex-direction:column;gap:3px;flex:1;min-width:130px;}
+.row-helper label{font-size:.68rem;font-weight:700;color:#555;}
+.row-helper .ci{font-size:.82rem;}
+.rh-tags{display:flex;flex-wrap:wrap;gap:4px;align-items:center;}
+.rh-tag{padding:3px 9px;border:1.5px solid var(--blue);color:var(--blue);font-size:.72rem;font-weight:700;cursor:pointer;background:#fff;transition:all .1s;border-radius:2px;font-family:'Noto Sans JP','MS Gothic',sans-serif;}
+.rh-tag:hover,.rh-tag.on{background:var(--blue);color:#fff;}
+.rh-reflect{padding:4px 10px;border:1.5px solid #000;background:#000;color:#fff;font-size:.72rem;font-weight:900;cursor:pointer;font-family:'Noto Sans JP','MS Gothic',sans-serif;border-radius:2px;}
+.rh-reflect:hover{background:var(--blue);border-color:var(--blue);}
+/* 税率まとめ変更エリア */
+.tax-panel{background:#fffbe6;border:2px solid #e6c200;padding:14px 16px;margin-top:14px;margin-bottom:2px;}
+.tax-panel-title{font-size:.82rem;font-weight:900;color:#7a5c00;margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+.tax-guide{font-size:.76rem;color:#555;background:#fff;border:1px solid #ddd;padding:10px 12px;margin-bottom:12px;line-height:1.85;}
+.tax-guide strong{color:#000;}
+.tax-rows{display:flex;flex-direction:column;gap:6px;}
+.tax-row-item{display:flex;align-items:center;gap:10px;font-size:.82rem;padding:5px 8px;background:#fff;border:1px solid #ddd;}
+.tax-row-item .tname{flex:1;color:#333;}
+.tax-row-item select{padding:4px 6px;border:1px solid #aaa;font-family:'Noto Sans JP','MS Gothic',sans-serif;font-size:.8rem;}
+
 /* ─ Preview scale wrap ─ */
 .prev-wrap{overflow:hidden;width:100%;border:1px solid #ccc;}
 
@@ -324,22 +345,20 @@ textarea.fi{resize:vertical;min-height:68px;}
   <div class="sec" id="section2">
     <div class="card">
       <div class="ctitle"><div class="cicon">02</div>作業明細</div>
-      <div class="tbl-wrap">
-        <table class="itbl">
-          <thead>
-            <tr>
-              <th style="width:40%">品目・作業内容</th>
-              <th style="width:11%">税率</th>
-              <th style="width:11%">数量</th>
-              <th style="width:19%">単価（円）</th>
-              <th style="width:14%">小計（円）</th>
-              <th style="width:5%"></th>
-            </tr>
-          </thead>
-          <tbody id="tbody"></tbody>
-        </table>
+      <div id="rowsContainer"></div>
+      <button class="btn btn-o btn-sm" onclick="addRow()" style="margin-top:8px;">＋ 行を追加</button>
+
+      <!-- 税率まとめ変更パネル -->
+      <div class="tax-panel" id="taxPanel">
+        <div class="tax-panel-title">📋 税率の選び方ガイド</div>
+        <div class="tax-guide">
+          <strong>【非課税】</strong>著作権の譲渡・利用許諾にあたる取引（作曲・作詞・編曲・歌唱・イラスト等の創作物の提供）は消費税法上<strong>非課税</strong>です。Purukichiへの請求の多くはこちらに該当します。非課税の場合、インボイス登録番号の有無にかかわらず消費税は発生しません。<br><br>
+          <strong>【10%課税】</strong>著作権を譲渡・許諾せず、技術的な役務（録音・ミックス・マスタリング・デザイン作業等）のみを請け負う場合は課税対象になります。<strong>インボイス登録番号をお持ちの方</strong>は10%を選択してください。登録番号をお持ちでない方（免税事業者）は、消費税を上乗せして請求することは原則できません。その場合は<strong>非課税</strong>で請求してください。<br><br>
+          <strong>【8%課税（軽減税率）】</strong>飲食料品・定期購読新聞が対象で、音楽・デザイン等の制作業務には<strong>基本的に関係ありません</strong>。迷ったら非課税か10%を選んでください。<br><br>
+          <strong>【迷ったら】</strong>作業内容タグを選択すると税率の推奨が自動表示されます。不明な場合はPurukichiか税理士にご確認ください。
+        </div>
       </div>
-      <button class="btn btn-o btn-sm" onclick="addRow()" style="margin-top:4px;">＋ 行を追加</button>
+
       <div class="tots" id="tots"></div>
     </div>
     <div class="ale" id="ale2"></div>
@@ -398,7 +417,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   const t=new Date();
   document.getElementById('issueDate').value=fmtDate(t);
   updateDueDate();
-  addRow();addRow();addRow();
+  addRow();
 });
 
 // ════════════════════════
@@ -424,10 +443,26 @@ function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').repl
 function showAle(id,msg){const e=document.getElementById(id);e.textContent=msg;e.style.display='block';setTimeout(()=>e.style.display='none',5000);}
 function fname(){
   const s=(document.getElementById('senderName').value||document.getElementById('senderYago').value||'unknown').replace(/\s/g,'');
-  const it=(rows.find(r=>r.name.trim())||{name:'品目不明'}).name.trim().slice(0,20);
   const dt=document.getElementById('issueDate').value||fmtDate(new Date());
-  const c=x=>x.replace(/[\\/:*?"<>|]/g,'');
-  return`請求書_${c(s)}_${c(it)}_${dt}.pdf`;
+  const clean=x=>x.replace(/[\\/:*?"<>|\s]/g,'');
+  // 有効な行を収集
+  const validRows=rows.filter(r=>r.name.trim());
+  let summary='';
+  if(validRows.length===0){
+    summary='品目不明';
+  } else if(validRows.length===1){
+    summary=validRows[0].name.trim().slice(0,20);
+  } else {
+    // 作業種別を全行から集めてユニーク化
+    const allWorks=[...new Set(validRows.flatMap(r=>r.works.length?r.works:[]))];
+    if(allWorks.length>0){
+      summary=allWorks.slice(0,3).join('・')+(allWorks.length>3?'他':'');
+    } else {
+      // 品名の先頭をスラッシュ区切り
+      summary=validRows.slice(0,2).map(r=>r.name.trim().slice(0,8)).join('_')+(validRows.length>2?`_他${validRows.length-2}件`:'');
+    }
+  }
+  return`請求書_${clean(s)}_${clean(summary)}_${dt}.pdf`;
 }
 
 // ════════════════════════
@@ -457,7 +492,25 @@ async function searchZip(){
 // ════════════════════════
 // ナビゲーション
 // ════════════════════════
-function goTo(n){
+// 現在どのステップまで「完了」しているか
+let maxStep=1;
+
+function goTo(n, skipVal=false){
+  // 前進時はバリデーション or maxStep チェック
+  if(!skipVal && n > maxStep){
+    if(n===2){
+      // STEP1バリデーション
+      if(!document.getElementById('senderName').value.trim()){showAle('ale1','氏名を入力してください。');goTo(1,true);return;}
+      if(!document.getElementById('bankName').value.trim()||!document.getElementById('bankNum').value.trim()||!document.getElementById('bankHolder').value.trim()){showAle('ale1','銀行名・口座番号・口座名義を入力してください。');goTo(1,true);return;}
+      if(!document.getElementById('issueDate').value||!document.getElementById('dueDate').value){showAle('ale1','発行日と支払期限を入力してください。');goTo(1,true);return;}
+      maxStep=2;
+    } else if(n===3){
+      // STEP2バリデーション
+      if(!rows.filter(r=>r.name.trim()&&r.price>0).length){showAle('ale2','品目名と単価を少なくとも1行入力してください。');goTo(2,true);return;}
+      invNo=genNo();buildInvArea();buildPreview();
+      maxStep=3;
+    }
+  }
   document.querySelectorAll('.sec').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.step').forEach(s=>s.classList.remove('active'));
   const se=document.getElementById('section'+n),st=document.getElementById('step'+n);
@@ -465,27 +518,19 @@ function goTo(n){
   if(st)st.classList.add('active');
   window.scrollTo({top:0,behavior:'smooth'});
 }
-function val1(){
-  if(!document.getElementById('senderName').value.trim())return showAle('ale1','氏名を入力してください。');
-  if(!document.getElementById('bankName').value.trim()||!document.getElementById('bankNum').value.trim()||!document.getElementById('bankHolder').value.trim())
-    return showAle('ale1','銀行名・口座番号・口座名義を入力してください。');
-  if(!document.getElementById('issueDate').value||!document.getElementById('dueDate').value)
-    return showAle('ale1','発行日と支払期限を入力してください。');
-  goTo(2);
-}
-function val2(){
-  if(!rows.filter(r=>r.name.trim()&&r.price>0).length)return showAle('ale2','品目名と単価を少なくとも1行入力してください。');
-  invNo=genNo();
-  buildInvArea();
-  buildPreview();
-  goTo(3);
-}
+function val1(){ goTo(2); }
+function val2(){ goTo(3); }
+
+// ════════════════════════
+// 作業種別
+// ════════════════════════
+const WORK_TYPES=['デザイン','作曲','作編曲','作詞','歌唱','ミックス','イラスト制作'];
 
 // ════════════════════════
 // 明細
 // ════════════════════════
 function addRow(){
-  rows.push({id:Date.now()+Math.random(),name:'',tax:'0',qty:1,price:0});
+  rows.push({id:Math.floor(Date.now()*1000+Math.random()*1000),name:'',tax:'0',qty:1,price:0,song:'',works:[]});
   renderRows();
 }
 function removeRow(id){
@@ -494,17 +539,71 @@ function removeRow(id){
   renderRows();
 }
 
-/*
-  品名：oninput で行を再描画しない（カーソル位置保持）
-  数値・選択：onchange のみ（再描画してもカーソル問題なし）
-  単価 onchange → renderRows で再描画（小計・合計が正確に更新される）
-*/
+// 品名：行再描画なし（カーソル保持）
 function setName(id,v){
   const r=rows.find(r=>r.id===id);if(!r)return;
   r.name=v;
-  // 合計だけ更新
+  renderTots();
+  renderTaxPanel();
+}
+// 楽曲名：行再描画なし（カーソル保持）
+function setSong(id,v){
+  const r=rows.find(r=>r.id===id);if(!r)return;
+  r.song=v;
+}
+// 著作物系（非課税）・役務系（10%）の分類
+const TAX_FREE_WORKS=new Set(['作曲','作編曲','作詞','歌唱','イラスト制作']);
+const TAXABLE_WORKS=new Set(['デザイン','ミックス']);
+
+function suggestTax(works){
+  if(!works.length) return null; // 選択なし → 推奨なし
+  const hasFree=works.some(w=>TAX_FREE_WORKS.has(w));
+  const hasTax=works.some(w=>TAXABLE_WORKS.has(w));
+  if(hasFree && !hasTax) return {tax:'0', label:'非課税', reason:'著作権の譲渡・利用許諾に該当するため'};
+  if(!hasFree && hasTax) return {tax:'10', label:'10%課税', reason:'技術的役務提供に該当する可能性があるため'};
+  return {tax:'mixed', label:'要確認', reason:'著作物と役務が混在しています。品目を分けて入力することをおすすめします'};
+}
+
+// 作業種別タグのトグル
+function toggleWork(id,work){
+  const r=rows.find(r=>r.id===id);if(!r)return;
+  if(r.works.includes(work)) r.works=r.works.filter(w=>w!==work);
+  else r.works.push(work);
+  // タグのon/offだけ更新（行再描画なし）
+  const btn=document.querySelector(`[data-wbtn="${id}_${work}"]`);
+  if(btn) btn.classList.toggle('on', r.works.includes(work));
+  // 税率の推奨を更新
+  const sug=suggestTax(r.works);
+  if(sug && sug.tax!=='mixed') r.tax=sug.tax;
+  // 推奨バッジを更新
+  const badge=document.querySelector(`[data-taxbadge="${id}"]`);
+  if(badge){
+    if(!sug){badge.innerHTML='';badge.style.display='none';}
+    else if(sug.tax==='mixed'){
+      badge.innerHTML=`⚠️ <strong>${sug.label}：</strong>${sug.reason}`;
+      badge.style.display='block';badge.style.background='#fff8e6';badge.style.borderColor='#e6a000';badge.style.color='#7a5000';
+    } else {
+      badge.innerHTML=`💡 <strong>${sug.label}を推奨：</strong>${sug.reason}`;
+      badge.style.display='block';badge.style.background='#f0f8ff';badge.style.borderColor='#a0c8f0';badge.style.color='#004080';
+    }
+  }
   renderTots();
 }
+// 楽曲名＋作業種別 → 品名に反映
+function reflectToName(id){
+  const r=rows.find(r=>r.id===id);if(!r)return;
+  const parts=[];
+  if(r.song.trim()) parts.push(r.song.trim());
+  if(r.works.length) parts.push(r.works.join('・'));
+  if(!parts.length)return;
+  r.name=parts.join(' ');
+  // 品名inputだけ更新
+  const inp=document.querySelector(`[data-nameinp="${id}"]`);
+  if(inp) inp.value=r.name;
+  renderTots();
+  renderTaxPanel();
+}
+// 数値・選択変更
 function setField(id,f,v){
   const r=rows.find(r=>r.id===id);if(!r)return;
   if(f==='qty'){const n=parseInt(v,10);r.qty=(!isNaN(n)&&n>=1)?n:1;}
@@ -514,23 +613,69 @@ function setField(id,f,v){
 }
 
 function renderRows(){
-  document.getElementById('tbody').innerHTML=rows.map(r=>`
-  <tr>
-    <td><input class="ci" type="text" value="${esc(r.name)}" placeholder="作業内容・品目名"
-      oninput="setName(${r.id},this.value)"
-      onchange="setName(${r.id},this.value)"></td>
-    <td><select class="ci" onchange="setField(${r.id},'tax',this.value)">
-      <option value="0"  ${r.tax==='0' ?'selected':''}>非課税</option>
-      <option value="10" ${r.tax==='10'?'selected':''}>10%</option>
-      <option value="8"  ${r.tax==='8' ?'selected':''}>8%</option>
-    </select></td>
-    <td><input class="ci ci-r" type="number" value="${r.qty}" min="1" step="1"
-      onchange="setField(${r.id},'qty',this.value)"></td>
-    <td><input class="ci ci-r" type="number" value="${r.price}" min="0" step="1"
-      onchange="setField(${r.id},'price',this.value)"></td>
-    <td style="text-align:right;font-weight:700;">¥${fmtN(r.qty*r.price)}</td>
-    <td><button class="rm" onclick="removeRow(${r.id})">✕</button></td>
-  </tr>`).join('');
+  const cont=document.getElementById('rowsContainer');
+  cont.innerHTML=rows.map((r,i)=>`
+  <div style="border:1px solid #ddd;margin-bottom:10px;background:#fff;">
+    <!-- ヘルパー：楽曲名・作業種別 -->
+    <div class="row-helper">
+      <div class="rh-f" style="min-width:180px;">
+        <label>楽曲名・案件名（任意）</label>
+        <input class="ci" type="text" data-nameinp-song="${r.id}" value="${esc(r.song)}" placeholder="例：OP曲タイトル"
+          oninput="setSong(${r.id},this.value)"
+          onchange="setSong(${r.id},this.value)">
+      </div>
+      <div class="rh-f">
+        <label>作業内容（複数選択可）</label>
+        <div class="rh-tags">
+          ${WORK_TYPES.map(w=>`<button class="rh-tag${r.works.includes(w)?' on':''}" data-wbtn="${r.id}_${w}" onclick="toggleWork(${r.id},'${w}')">${w}</button>`).join('')}
+        </div>
+      </div>
+      <button class="rh-reflect" onclick="reflectToName(${r.id})">↓ 品名に反映</button>
+    </div>
+    <!-- 推奨バッジ -->
+    <div data-taxbadge="${r.id}" style="display:none;margin:0 10px 6px;padding:5px 10px;border:1.5px solid #a0c8f0;font-size:.74rem;background:#f0f8ff;color:#004080;"></div>
+    <!-- 品名・税率・数量・単価・小計 -->
+    <div style="display:grid;grid-template-columns:1fr 100px 70px 110px 90px 32px;gap:0;align-items:stretch;">
+      <div style="padding:6px 6px;border-top:1px solid #eee;border-right:1px solid #eee;">
+        <div style="font-size:.66rem;color:#888;margin-bottom:2px;">品名（直接入力可）</div>
+        <input class="ci" type="text" data-nameinp="${r.id}" value="${esc(r.name)}" placeholder="作業内容・品目名"
+          oninput="setName(${r.id},this.value)"
+          onchange="setName(${r.id},this.value)">
+      </div>
+      <div style="padding:6px 6px;border-top:1px solid #eee;border-right:1px solid #eee;">
+        <div style="font-size:.66rem;color:#888;margin-bottom:2px;">税率</div>
+        <select class="ci" onchange="setTax(${r.id},this.value)">
+          <option value="0"  ${r.tax==='0' ?'selected':''}>非課税</option>
+          <option value="10" ${r.tax==='10'?'selected':''}>10%</option>
+          <option value="8"  ${r.tax==='8' ?'selected':''}>8%</option>
+        </select>
+      </div>
+      <div style="padding:6px 6px;border-top:1px solid #eee;border-right:1px solid #eee;">
+        <div style="font-size:.66rem;color:#888;margin-bottom:2px;">数量</div>
+        <input class="ci ci-r" type="number" value="${r.qty}" min="1" step="1"
+          onchange="setField(${r.id},'qty',this.value)">
+      </div>
+      <div style="padding:6px 6px;border-top:1px solid #eee;border-right:1px solid #eee;">
+        <div style="font-size:.66rem;color:#888;margin-bottom:2px;">単価（円）</div>
+        <input class="ci ci-r" type="number" value="${r.price}" min="0" step="1"
+          onchange="setField(${r.id},'price',this.value)">
+      </div>
+      <div style="padding:6px 8px;border-top:1px solid #eee;border-right:1px solid #eee;text-align:right;">
+        <div style="font-size:.66rem;color:#888;margin-bottom:2px;">小計</div>
+        <div style="font-weight:700;font-size:.85rem;padding-top:7px;">¥${fmtN(r.qty*r.price)}</div>
+      </div>
+      <div style="padding:4px 4px;border-top:1px solid #eee;display:flex;align-items:center;justify-content:center;">
+        ${rows.length>1?`<button class="rm" onclick="removeRow(${r.id})">✕</button>`:''}
+      </div>
+    </div>
+  </div>`).join('');
+  renderTots();
+}
+
+
+function setTax(id,v){
+  const r=rows.find(r=>r.id===id);if(!r)return;
+  r.tax=v;
   renderTots();
 }
 
@@ -720,7 +865,7 @@ function submitInv(){
 // リセット
 // ════════════════════════
 function resetTool(){
-  rows=[];invNo='';
+  rows=[];invNo='';maxStep=1;
   ['senderYago','senderName','senderZip','senderAddr','senderPhone','senderEmail','invReg',
    'bankName','bankBranch','bankNum','bankHolder','notes'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('bankType').value='普通';
@@ -728,7 +873,7 @@ function resetTool(){
   const t=new Date();
   document.getElementById('issueDate').value=fmtDate(t);
   updateDueDate();
-  addRow();addRow();addRow();
+  addRow();
   document.querySelectorAll('.sec').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.step').forEach(s=>{s.classList.remove('active','done');});
   document.getElementById('section1').classList.add('active');
