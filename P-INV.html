@@ -353,9 +353,8 @@ textarea.fi{resize:vertical;min-height:68px;}
         <div class="tax-panel-title">📋 税率の選び方ガイド</div>
         <div class="tax-guide">
           <strong>【非課税】</strong>著作権の譲渡・利用許諾にあたる取引（作曲・作詞・編曲・歌唱・イラスト等の創作物の提供）は消費税法上<strong>非課税</strong>です。Purukichiへの請求の多くはこちらに該当します。<br><br>
-          <strong>【10%課税】</strong>著作権を譲渡・許諾せず、技術的な役務（録音・ミックス・マスタリング・デザイン作業等）のみを請け負う場合は課税対象になります。<strong>インボイス登録番号をお持ちの方</strong>は10%を選択してください。登録番号をお持ちでない方（免税事業者）は、消費税を上乗せして請求することは原則できません。その場合は<strong>非課税</strong>で請求してください。<br><br>
+          <strong>【10%課税】</strong>著作権を譲渡・許諾せず、技術的な役務（録音・ミックス・マスタリング・デザイン作業等）のみを請け負う場合は課税対象になります。ただし<strong>インボイス登録番号をお持ちでない方（免税事業者）は、消費税を上乗せして請求することは原則できません。</strong>その場合は非課税で請求してください。<br><br>
           <strong>【8%課税（軽減税率）】</strong>飲食料品・定期購読新聞が対象で、音楽・デザイン等の制作業務には<strong>基本的に関係ありません</strong>。迷ったら非課税か10%を選んでください。<br><br>
-          <strong>【迷ったら】</strong>作業内容タグを選択すると税率の推奨が自動表示されます。不明な場合はPurukichiか税理士にご確認ください。
         </div>
       </div>
 
@@ -378,7 +377,7 @@ textarea.fi{resize:vertical;min-height:68px;}
       <button class="btn btn-o" onclick="goTo(2)">← 戻る</button>
       <div class="acts-r">
         <button class="btn btn-o" onclick="dlPDF()">📄 PDFをダウンロード</button>
-        <button class="btn btn-a" onclick="submitInv()">✓ 請求書を確定・発行</button>
+        <button class="btn btn-a" onclick="sendToPurukichi()">✉️ Purukichiに送信</button>
       </div>
     </div>
   </div>
@@ -390,8 +389,8 @@ textarea.fi{resize:vertical;min-height:68px;}
       <div class="sttl">請求書を発行しました</div>
       <div class="ssub">請求書番号：<strong id="sNo"></strong></div>
       <div class="sact">
-        <button class="btn btn-p" onclick="dlPDF()">📄 PDFをダウンロード</button>
-        <button class="btn btn-o" onclick="resetTool()">新しい請求書を作成</button>
+        <button class="btn btn-o" onclick="dlPDF()">📄 PDFをダウンロード</button>
+        <button class="btn btn-p" onclick="resetTool()">新しい請求書を作成</button>
       </div>
     </div>
   </div>
@@ -495,22 +494,8 @@ async function searchZip(){
 // 現在どのステップまで「完了」しているか
 let maxStep=1;
 
-function goTo(n, skipVal=false){
-  // 前進時はバリデーション or maxStep チェック
-  if(!skipVal && n > maxStep){
-    if(n===2){
-      // STEP1バリデーション
-      if(!document.getElementById('senderName').value.trim()){showAle('ale1','氏名を入力してください。');goTo(1,true);return;}
-      if(!document.getElementById('bankName').value.trim()||!document.getElementById('bankNum').value.trim()||!document.getElementById('bankHolder').value.trim()){showAle('ale1','銀行名・口座番号・口座名義を入力してください。');goTo(1,true);return;}
-      if(!document.getElementById('issueDate').value||!document.getElementById('dueDate').value){showAle('ale1','発行日と支払期限を入力してください。');goTo(1,true);return;}
-      maxStep=2;
-    } else if(n===3){
-      // STEP2バリデーション
-      if(!rows.filter(r=>r.name.trim()&&r.price>0).length){showAle('ale2','品目名と単価を少なくとも1行入力してください。');goTo(2,true);return;}
-      invNo=genNo();buildInvArea();buildPreview();
-      maxStep=3;
-    }
-  }
+// 画面切り替えのみ（バリデーションなし・後退専用）
+function jumpTo(n){
   document.querySelectorAll('.sec').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.step').forEach(s=>s.classList.remove('active'));
   const se=document.getElementById('section'+n),st=document.getElementById('step'+n);
@@ -518,8 +503,34 @@ function goTo(n, skipVal=false){
   if(st)st.classList.add('active');
   window.scrollTo({top:0,behavior:'smooth'});
 }
-function val1(){ goTo(2); }
-function val2(){ goTo(3); }
+// タブクリック：後退は自由、前進はmaxStepチェック
+function goTo(n){
+  if(n>maxStep){
+    // まだ到達していないステップには飛べない
+    if(maxStep===1) showAle('ale1','先にSTEP1の入力を完了してください。');
+    else if(maxStep===2) showAle('ale2','先にSTEP2の入力を完了してください。');
+    return;
+  }
+  if(n===3){ buildInvArea(); buildPreview(); }
+  jumpTo(n);
+}
+// STEP1「次へ」ボタン
+function val1(){
+  if(!document.getElementById('senderName').value.trim()){showAle('ale1','氏名を入力してください。');return;}
+  if(!document.getElementById('bankName').value.trim()||!document.getElementById('bankNum').value.trim()||!document.getElementById('bankHolder').value.trim()){showAle('ale1','銀行名・口座番号・口座名義を入力してください。');return;}
+  if(!document.getElementById('issueDate').value||!document.getElementById('dueDate').value){showAle('ale1','発行日と支払期限を入力してください。');return;}
+  maxStep=Math.max(maxStep,2);
+  jumpTo(2);
+}
+// STEP2「次へ」ボタン
+function val2(){
+  if(!rows.filter(r=>r.name.trim()&&r.price>0).length){showAle('ale2','品目名と単価を少なくとも1行入力してください。');return;}
+  invNo=invNo||genNo();
+  buildInvArea();
+  buildPreview();
+  maxStep=Math.max(maxStep,3);
+  jumpTo(3);
+}
 
 // ════════════════════════
 // 作業種別
@@ -587,6 +598,11 @@ function toggleWork(id,work){
       badge.style.display='block';badge.style.background='#f0f8ff';badge.style.borderColor='#a0c8f0';badge.style.color='#004080';
     }
   }
+  // 税率セレクトにも自動反映（mixedでない場合のみ）
+  if(sug && sug.tax!=='mixed'){
+    const sel=document.querySelector(`[data-taxsel="${id}"]`);
+    if(sel) sel.value=sug.tax;
+  }
   renderTots();
 }
 // 楽曲名＋作業種別 → 品名に反映
@@ -601,7 +617,7 @@ function reflectToName(id){
   const inp=document.querySelector(`[data-nameinp="${id}"]`);
   if(inp) inp.value=r.name;
   renderTots();
-  renderTaxPanel();
+  renderInvRegWarnings();
 }
 // 数値・選択変更
 function setField(id,f,v){
@@ -644,7 +660,7 @@ function renderRows(){
       </div>
       <div style="padding:6px 6px;border-top:1px solid #eee;border-right:1px solid #eee;">
         <div style="font-size:.66rem;color:#888;margin-bottom:2px;">税率</div>
-        <select class="ci" onchange="setTax(${r.id},this.value)">
+        <select class="ci" data-taxsel="${r.id}" onchange="setTax(${r.id},this.value)">
           <option value="0"  ${r.tax==='0' ?'selected':''}>非課税</option>
           <option value="10" ${r.tax==='10'?'selected':''}>10%</option>
           <option value="8"  ${r.tax==='8' ?'selected':''}>8%</option>
@@ -668,6 +684,9 @@ function renderRows(){
         ${rows.length>1?`<button class="rm" onclick="removeRow(${r.id})">✕</button>`:''}
       </div>
     </div>
+    <div data-invwarn="${r.id}" style="display:none;margin:0 10px 8px;padding:6px 10px;border:1.5px solid #cc0000;font-size:.74rem;background:#fff0f0;color:#cc0000;">
+      ⚠️ インボイス登録番号が入力されています。登録事業者への支払いには消費税が発生するため、税率を10%に設定してください。
+    </div>
   </div>`).join('');
   renderTots();
 }
@@ -677,6 +696,20 @@ function setTax(id,v){
   const r=rows.find(r=>r.id===id);if(!r)return;
   r.tax=v;
   renderTots();
+  renderInvRegWarnings();
+}
+
+function renderInvRegWarnings(){
+  const hasReg=document.getElementById('invReg')&&document.getElementById('invReg').value.trim();
+  rows.forEach(r=>{
+    const el=document.querySelector(`[data-invwarn="${r.id}"]`);
+    if(!el)return;
+    if(hasReg && r.tax==='0'){
+      el.style.display='block';
+    } else {
+      el.style.display='none';
+    }
+  });
 }
 
 function calcTots(){
@@ -850,15 +883,34 @@ async function dlPDF(){
 }
 
 // ════════════════════════
-// 確定・発行
+// Purukichiに送信
 // ════════════════════════
-function submitInv(){
+function sendToPurukichi(){
+  // まずPDFをダウンロード
+  dlPDF();
+  // 送信者名
+  const senderName=(document.getElementById('senderYago').value.trim()||document.getElementById('senderName').value.trim()||'制作者');
+  // 件名
+  const subject=encodeURIComponent('請求書送付：'+senderName);
+  // 本文
+  const body=encodeURIComponent(`Purukichi 様
+
+お世話になっております。${senderName}です。
+
+請求書（No.${invNo}）を送付いたします。
+ダウンロードしたPDFファイルを添付してお送りください。
+
+何卒よろしくお願いいたします。
+
+${senderName}`);
+  const mailtoLink='mailto:musiccattle@gmail.com?subject='+subject+'&body='+body;
+  window.location.href=mailtoLink;
+  // 完了画面へ
   document.getElementById('sNo').textContent=invNo;
   document.querySelectorAll('.sec').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.step').forEach(s=>{s.classList.remove('active');s.classList.add('done');});
   document.getElementById('section-success').classList.add('active');
   window.scrollTo({top:0,behavior:'smooth'});
-  setTimeout(dlPDF,400);
 }
 
 // ════════════════════════
