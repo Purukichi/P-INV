@@ -406,7 +406,7 @@ select.fi{
 @keyframes sp{to{transform:rotate(360deg);}}
 .pmsg{
   font-size:.78rem;font-weight:400;color:var(--muted);
-  letter-spacing:.32em;text-transform:uppercase;
+  letter-spacing:.24em;
 }
 
 /* ─ 税率ガイド ─ */
@@ -509,7 +509,7 @@ select.fi{
 .i-dates{
   text-align:right;font-size:10px;line-height:2;color:#595959;font-weight:300;
 }
-.i-dates .dlb{color:#8C8C8C;letter-spacing:.1em;font-size:8.5px;text-transform:uppercase;}
+.i-dates .dlb{color:#8C8C8C;letter-spacing:.12em;font-size:9px;}
 .i-dates strong{color:#0D0D0D;font-weight:400;display:block;font-size:11px;}
 
 .i-ban{
@@ -518,16 +518,16 @@ select.fi{
   padding:18px 4px;margin-bottom:24px;
   display:flex;justify-content:space-between;align-items:center;
 }
-.i-ban .ll .lb{font-size:8.5px;color:#8C8C8C;margin-bottom:6px;letter-spacing:.18em;text-transform:uppercase;}
+.i-ban .ll .lb{font-size:9px;color:#8C8C8C;margin-bottom:6px;letter-spacing:.12em;}
 .i-ban .ll .am{font-size:24px;font-weight:300;color:#0D0D0D;letter-spacing:.04em;font-feature-settings:"tnum" 1;}
 .i-ban .rr{text-align:right;}
-.i-ban .rr .lb{font-size:8.5px;color:#8C8C8C;margin-bottom:6px;letter-spacing:.18em;text-transform:uppercase;}
+.i-ban .rr .lb{font-size:9px;color:#8C8C8C;margin-bottom:6px;letter-spacing:.12em;}
 .i-ban .rr .vl{font-size:11px;color:#0D0D0D;font-weight:400;}
 
 .i-par{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:26px;}
 .i-pt{padding:0;}
 .i-ptl{
-  font-size:8.5px;color:#8C8C8C;letter-spacing:.18em;text-transform:uppercase;
+  font-size:9px;color:#8C8C8C;letter-spacing:.14em;
   padding-bottom:6px;margin-bottom:8px;border-bottom:1px solid #D9D9D9;font-weight:400;
 }
 .i-pn{font-size:12px;font-weight:400;margin-bottom:4px;color:#0D0D0D;}
@@ -536,8 +536,8 @@ select.fi{
 .i-tbl{width:100%;border-collapse:collapse;margin-bottom:18px;}
 .i-tbl th{
   border-bottom:1px solid #262626;
-  padding:8px 10px;font-size:8.5px;font-weight:400;color:#8C8C8C;
-  letter-spacing:.14em;text-transform:uppercase;
+  padding:8px 10px;font-size:9px;font-weight:400;color:#8C8C8C;
+  letter-spacing:.1em;
 }
 .i-tbl td{
   border-bottom:1px solid #D9D9D9;
@@ -560,7 +560,7 @@ select.fi{
   padding:14px 4px;margin-bottom:18px;
 }
 .i-bnkt{
-  font-size:8.5px;color:#8C8C8C;letter-spacing:.18em;text-transform:uppercase;
+  font-size:9px;color:#8C8C8C;letter-spacing:.14em;
   margin-bottom:6px;font-weight:400;
 }
 .i-bnkb{font-size:10.5px;color:#0D0D0D;font-weight:300;line-height:1.85;}

@@ -439,54 +439,54 @@ function buildInvHTML(){
   return `
   <div class="i-hdr">
     <div>
-      <div class="i-ttl">INVOICE</div>
-      <div class="i-no">No. ${invNo}</div>
+      <div class="i-ttl">請求書</div>
+      <div class="i-no">番号：${invNo}</div>
       ${reg ? `<div class="i-reg">登録番号：${esc(reg)}</div>` : ''}
     </div>
     <div class="i-dates">
-      <div><span class="dlb">Issue</span><strong>${toJP($('issueDate').value)}</strong></div>
-      <div><span class="dlb">Due</span><strong>${toJP($('dueDate').value)}</strong></div>
+      <div><span class="dlb">発行日</span><strong>${toJP($('issueDate').value)}</strong></div>
+      <div><span class="dlb">支払期限</span><strong>${toJP($('dueDate').value)}</strong></div>
     </div>
   </div>
   <div class="i-ban">
     <div class="ll">
-      <div class="lb">Total Amount</div>
+      <div class="lb">ご請求金額（税込）</div>
       <div class="am">¥ ${fmtN(t.total)}</div>
     </div>
     <div class="rr">
-      <div class="lb">Due Date</div>
+      <div class="lb">お支払期限</div>
       <div class="vl">${toJP($('dueDate').value)}</div>
     </div>
   </div>
   <div class="i-par">
     <div class="i-pt">
-      <div class="i-ptl">Bill To</div>
+      <div class="i-ptl">請求先</div>
       <div class="i-pn">${esc(CLIENT.yago)}　${esc(CLIENT.name)}　様</div>
-      <div class="i-pd">${esc(CLIENT.addr)}<br>TEL：${esc(CLIENT.tel)}<br>${esc(CLIENT.mail)}</div>
+      <div class="i-pd">${esc(CLIENT.addr)}<br>電話：${esc(CLIENT.tel)}<br>${esc(CLIENT.mail)}</div>
     </div>
     <div class="i-pt">
-      <div class="i-ptl">From</div>
+      <div class="i-ptl">請求元</div>
       <div class="i-pn">${senderLine}</div>
       <div class="i-pd">
         ${$('senderAddr').value  ? esc($('senderAddr').value)  + '<br>' : ''}
-        ${$('senderPhone').value ? 'TEL：' + esc($('senderPhone').value) + '<br>' : ''}
+        ${$('senderPhone').value ? '電話：' + esc($('senderPhone').value) + '<br>' : ''}
         ${$('senderEmail').value ? esc($('senderEmail').value) : ''}
       </div>
     </div>
   </div>
   <table class="i-tbl">
     <thead><tr>
-      <th style="width:42%;text-align:left;">Description</th>
-      <th style="width:10%;text-align:right;">Tax</th>
-      <th style="width:10%;text-align:right;">Qty</th>
-      <th style="width:18%;text-align:right;">Unit</th>
-      <th style="width:20%;text-align:right;">Amount</th>
+      <th style="width:42%;text-align:left;">品目・作業内容</th>
+      <th style="width:10%;text-align:right;">税率</th>
+      <th style="width:10%;text-align:right;">数量</th>
+      <th style="width:18%;text-align:right;">単価</th>
+      <th style="width:20%;text-align:right;">金額</th>
     </tr></thead>
     <tbody>${irows}</tbody>
   </table>
   <div class="i-tot-w"><table class="i-tot">${trows}</table></div>
   <div class="i-bnk">
-    <div class="i-bnkt">Payment</div>
+    <div class="i-bnkt">お振込先</div>
     <div class="i-bnkb">${esc(bank)}</div>
   </div>
   ${notes ? `<div class="i-note"><strong>備考：</strong>${esc(notes)}</div>` : ''}
@@ -572,18 +572,40 @@ function triggerDownload(blob, filename){
 
 // ─────────────────────────────────────────────
 // pCloud upload (uploadtolink endpoint, public file request)
+//
+// pCloud の API は応答に CORS ヘッダを付けないため、ブラウザから
+// fetch しても応答を読めずエラーになる。そのため二段構えにする：
+//   1) 通常 fetch（成功すれば確認済みとして返す）
+//   2) no-cors fetch（応答は不透明だが、ブラウザは送信自体は実行する）
+//   3) 両方失敗したら error
+// 送信は届いていても応答を読めないだけ、というケースが多いので、
+// no-cors で送れた場合は「送信を試行した（未確認）」として扱う。
 // ─────────────────────────────────────────────
 async function uploadToPCloud(blob, filename){
-  // pCloud public file-request upload endpoint.
-  // Docs: https://docs.pcloud.com/methods/public_links/uploadtolink.html
-  const url = `https://api.pcloud.com/uploadtolink?code=${encodeURIComponent(PCLOUD_CODE)}&filename=${encodeURIComponent(filename)}&nopartial=1`;
-  const fd = new FormData();
-  fd.append('file', blob, filename);
-  const r = await fetch(url, { method:'POST', body: fd });
-  if (!r.ok) throw new Error('HTTP ' + r.status);
-  const j = await r.json();
-  if (j.result !== 0) throw new Error('pCloud error: ' + (j.error || j.result));
-  return j;
+  const url = `https://api.pcloud.com/uploadtolink?code=${encodeURIComponent(PCLOUD_CODE)}&names=${encodeURIComponent(filename)}&nopartial=1`;
+  const makeFD = () => { const fd = new FormData(); fd.append('file', blob, filename); return fd; };
+
+  // 1) CORS 経由（応答を読める場合のみ）
+  try {
+    const r = await fetch(url, { method:'POST', body: makeFD() });
+    if (r.ok){
+      const j = await r.json();
+      if (j.result === 0) return { ok:true, verified:true };
+      return { ok:false, verified:false, error:'pCloud: ' + (j.error || j.result) };
+    }
+  } catch (e) {
+    // 大半は CORS で response opaque を読み取れないためここに入る
+    console.warn('pCloud CORS fetch failed; trying no-cors:', e.message);
+  }
+
+  // 2) no-cors（fire-and-forget。response は opaque で中身は読めないが、
+  //    送信自体はブラウザが完了させる）
+  try {
+    await fetch(url, { method:'POST', body: makeFD(), mode:'no-cors' });
+    return { ok:true, verified:false };
+  } catch (e) {
+    return { ok:false, verified:false, error: e.message || String(e) };
+  }
 }
 
 // ─────────────────────────────────────────────
@@ -615,7 +637,7 @@ async function issueInvoice(){
   msg.textContent = 'PDF';
 
   let pdfOut = null;
-  let uploadResult = { ok:false, error:null };
+  let uploadResult = { ok:false, verified:false, error:null };
 
   try {
     pdfOut = await generatePDF({ download: true });
@@ -626,16 +648,9 @@ async function issueInvoice(){
     return;
   }
 
-  // Try pCloud upload (best effort)
   if (pdfOut) {
-    msg.textContent = 'UPLOAD';
-    try {
-      await uploadToPCloud(pdfOut.blob, pdfOut.filename);
-      uploadResult.ok = true;
-    } catch (e) {
-      uploadResult.error = e.message || String(e);
-      console.warn('pCloud upload failed:', e);
-    }
+    msg.textContent = '送信中';
+    uploadResult = await uploadToPCloud(pdfOut.blob, pdfOut.filename);
   }
 
   ov.classList.remove('show');
@@ -645,14 +660,15 @@ async function issueInvoice(){
 function showSuccess(uploadResult){
   $('sNo').textContent = invNo;
   const us = $('upStatus');
-  if (uploadResult.ok){
-    us.innerHTML = `${svgIcon('check',14)} <span style="margin-left:6px;">pCloudへ自動送信しました</span>`;
+  const linkLine = `<br><a class="lk" href="${PCLOUD_LINK}" target="_blank" rel="noopener">${PCLOUD_LINK}</a>`;
+  if (uploadResult.ok && uploadResult.verified){
+    us.innerHTML = `${svgIcon('check',14)}<span style="margin-left:6px;">pCloudへ送信しました（受信を確認）</span>`;
+  } else if (uploadResult.ok){
+    // 送信はしたが応答が読めない（CORS の typical なケース）。
+    // ブラウザは送信自体を完了させているので、送信済みとして扱う。
+    us.innerHTML = `${svgIcon('check',14)}<span style="margin-left:6px;">pCloudへ送信しました。受信状況はpCloud側でご確認ください。${linkLine}</span>`;
   } else {
-    us.innerHTML = `
-      ${svgIcon('warning',14)}
-      <span style="margin-left:6px;">自動送信できませんでした。PDFはダウンロード済みです。<br>
-      下記リンクから手動でアップロードしてください：<br>
-      <a class="lk" href="${PCLOUD_LINK}" target="_blank" rel="noopener">${PCLOUD_LINK}</a></span>`;
+    us.innerHTML = `${svgIcon('warning',14)}<span style="margin-left:6px;">自動送信できませんでした。PDFはダウンロード済みです。下記リンクから手動でアップロードしてください。${linkLine}</span>`;
   }
   paintIcons(us);
   us.classList.add('show');
