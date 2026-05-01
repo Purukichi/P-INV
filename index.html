@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P-INV</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600&family=Noto+Sans+JP:wght@200;300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+
+<!-- PDF生成オーバーレイ -->
+<div class="pdfo" id="pdfo" aria-hidden="true">
+  <div class="pdfb">
+    <span class="spin" data-icon="spinner" data-size="36"></span>
+    <div class="pmsg" id="pmsg">PDF</div>
+  </div>
+</div>
+
+<!-- html2canvas 用の隠し描画エリア -->
+<div class="off-screen">
+  <div id="inv-area"></div>
+</div>
+
+<header class="hdr">
+  <div class="brand">
+    <span class="logo">P&#8209;INV</span>
+    <span class="tagline">INVOICE</span>
+  </div>
+  <button class="theme-toggle" id="themeToggle" type="button" aria-label="テーマ切替" title="ライト/ダーク切替">
+    <span data-icon="sun" data-size="18" class="t-sun"></span>
+    <span data-icon="moon" data-size="18" class="t-moon"></span>
+  </button>
+</header>
+
+<main class="wrap">
+
+  <!-- ステップインジケーター -->
+  <nav class="steps" aria-label="ステップ">
+    <button class="step active" id="step1" type="button" data-go="1" title="STEP 1 — 請求情報">
+      <span class="step-num">1</span>
+    </button>
+    <span class="step-line" id="line12" aria-hidden="true"></span>
+    <button class="step" id="step2" type="button" data-go="2" title="STEP 2 — 明細入力">
+      <span class="step-num">2</span>
+    </button>
+    <span class="step-line" id="line23" aria-hidden="true"></span>
+    <button class="step" id="step3" type="button" data-go="3" title="STEP 3 — 確認・発行">
+      <span class="step-num">3</span>
+    </button>
+  </nav>
+
+  <!-- ══ STEP 1 ══ -->
+  <section class="sec active" id="section1">
+
+    <!-- 制作者情報 -->
+    <div class="card">
+      <div class="ctitle">
+        <span data-icon="user" data-size="18"></span>
+        <span>制作者情報</span>
+      </div>
+      <div class="fg" style="margin-bottom:14px;">
+        <div class="f">
+          <label>屋号</label>
+          <input class="fi" type="text" id="senderYago" placeholder="例：音楽制作 〇〇">
+        </div>
+        <div class="f">
+          <label>氏名 <span class="req">*</span></label>
+          <input class="fi" type="text" id="senderName" placeholder="例：山田 太郎">
+        </div>
+      </div>
+      <div class="fg" style="margin-bottom:14px;">
+        <div class="f full">
+          <label>郵便番号から住所を検索</label>
+          <div class="zip-row">
+            <input class="fi" type="text" id="senderZip" placeholder="1234567（ハイフンなし）" maxlength="8">
+            <button class="btn-zip" id="btnZip" type="button" aria-label="住所検索" title="住所検索">
+              <span data-icon="search" data-size="16"></span>
+            </button>
+          </div>
+          <div class="hint" id="zipMsg"></div>
+        </div>
+      </div>
+      <div class="fg">
+        <div class="f full">
+          <label>住所 <span class="req">*</span></label>
+          <input class="fi" type="text" id="senderAddr" placeholder="例：東京都渋谷区〇〇 1-2-3">
+        </div>
+        <div class="f">
+          <label>電話番号</label>
+          <input class="fi" type="text" id="senderPhone" placeholder="例：090-0000-0000">
+        </div>
+        <div class="f">
+          <label>メールアドレス</label>
+          <input class="fi" type="email" id="senderEmail" placeholder="例：mail@example.com">
+        </div>
+        <div class="f full">
+          <label>インボイス登録番号（適格請求書発行事業者のみ）</label>
+          <input class="fi" type="text" id="invReg" placeholder="T-1234567890123">
+          <div class="hint">登録番号がない場合は空欄でかまいません</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 振込先 -->
+    <div class="card">
+      <div class="ctitle">
+        <span data-icon="bank" data-size="18"></span>
+        <span>振込先口座</span>
+      </div>
+      <div class="fg fg4" style="margin-bottom:14px;">
+        <div class="f" style="grid-column:span 2;">
+          <label>銀行名 <span class="req">*</span></label>
+          <input class="fi" type="text" id="bankName" placeholder="例：三菱UFJ銀行">
+        </div>
+        <div class="f" style="grid-column:span 2;">
+          <label>支店名</label>
+          <input class="fi" type="text" id="bankBranch" placeholder="例：渋谷支店">
+        </div>
+      </div>
+      <div class="fg fg3">
+        <div class="f">
+          <label>口座種別</label>
+          <select class="fi" id="bankType">
+            <option value="普通">普通</option>
+            <option value="当座">当座</option>
+          </select>
+        </div>
+        <div class="f">
+          <label>口座番号 <span class="req">*</span></label>
+          <input class="fi" type="text" id="bankNum" placeholder="例：1234567">
+        </div>
+        <div class="f">
+          <label>口座名義（カナ）<span class="req">*</span></label>
+          <input class="fi" type="text" id="bankHolder" placeholder="例：ヤマダ タロウ">
+        </div>
+      </div>
+    </div>
+
+    <!-- 請求書設定 -->
+    <div class="card">
+      <div class="ctitle">
+        <span data-icon="calendar" data-size="18"></span>
+        <span>請求書設定</span>
+      </div>
+      <div class="fg">
+        <div class="f">
+          <label>発行日 <span class="req">*</span></label>
+          <input class="fi" type="date" id="issueDate">
+        </div>
+        <div class="f">
+          <label>支払期限 <span class="req">*</span></label>
+          <input class="fi" type="date" id="dueDate">
+        </div>
+        <div class="f full">
+          <label>備考・特記事項</label>
+          <textarea class="fi" id="notes" placeholder="例：ご不明な点がございましたらご連絡ください。"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="ale" id="ale1"></div>
+    <div class="acts">
+      <span></span>
+      <button class="btn btn-p" id="btnVal1" type="button" aria-label="次へ" title="次のステップへ">
+        <span data-icon="arrow-right" data-size="18"></span>
+      </button>
+    </div>
+  </section>
+
+  <!-- ══ STEP 2 ══ -->
+  <section class="sec" id="section2">
+    <div class="card">
+      <div class="ctitle">
+        <span data-icon="list" data-size="18"></span>
+        <span>作業明細</span>
+      </div>
+      <div id="rowsContainer"></div>
+      <button class="btn btn-o btn-sm" id="btnAddRow" type="button" aria-label="行を追加" title="行を追加" style="margin-top:10px;">
+        <span data-icon="plus" data-size="16"></span>
+      </button>
+
+      <!-- 税率ガイド（折りたたみ） -->
+      <details class="tax-panel" id="taxPanel">
+        <summary class="tax-panel-title">
+          <span data-icon="info" data-size="16"></span>
+          <span>税率の選び方ガイド</span>
+        </summary>
+        <div class="tax-guide">
+          <strong>【非課税】</strong>著作権の譲渡・利用許諾にあたる取引（作曲・作詞・編曲・歌唱・イラスト等の創作物の提供）は消費税法上<strong>非課税</strong>です。Purukichiへの請求の多くはこちらに該当します。<br><br>
+          <strong>【10%課税】</strong>著作権を譲渡・許諾せず、技術的な役務（録音・ミックス・マスタリング・デザイン作業等）のみを請け負う場合は課税対象になります。ただし<strong>インボイス登録番号をお持ちでない方（免税事業者）は、消費税を上乗せして請求することは原則できません。</strong>その場合は非課税で請求してください。<br><br>
+          <strong>【8%課税（軽減税率）】</strong>飲食料品・定期購読新聞が対象で、音楽・デザイン等の制作業務には<strong>基本的に関係ありません</strong>。
+        </div>
+      </details>
+
+      <div class="tots" id="tots"></div>
+    </div>
+    <div class="ale" id="ale2"></div>
+    <div class="acts">
+      <button class="btn btn-o" id="btnBack2" type="button" aria-label="戻る" title="戻る">
+        <span data-icon="arrow-left" data-size="18"></span>
+      </button>
+      <button class="btn btn-p" id="btnVal2" type="button" aria-label="次へ" title="プレビューへ">
+        <span data-icon="arrow-right" data-size="18"></span>
+      </button>
+    </div>
+  </section>
+
+  <!-- ══ STEP 3 ══ -->
+  <section class="sec" id="section3">
+    <div class="card">
+      <div class="ctitle">
+        <span data-icon="document" data-size="18"></span>
+        <span>プレビュー</span>
+      </div>
+      <div class="prev-wrap" id="prevWrap"></div>
+    </div>
+    <div class="acts">
+      <button class="btn btn-o" id="btnBack3" type="button" aria-label="戻る" title="戻る">
+        <span data-icon="arrow-left" data-size="18"></span>
+      </button>
+      <div class="acts-r">
+        <button class="btn btn-p" id="btnIssue" type="button" aria-label="発行" title="発行（PDFダウンロード＋送信）">
+          <span data-icon="check" data-size="18"></span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 完了 ══ -->
+  <section class="sec" id="section-success">
+    <div class="sbox">
+      <span class="sico" data-icon="check-circle" data-size="48"></span>
+      <div class="sttl">発行完了</div>
+      <div class="ssub">No. <strong id="sNo"></strong></div>
+
+      <div class="up-status" id="upStatus"></div>
+
+      <div class="sact">
+        <button class="btn btn-o" id="btnRedl" type="button" aria-label="PDFを再ダウンロード" title="PDF再ダウンロード">
+          <span data-icon="download" data-size="18"></span>
+        </button>
+        <a class="btn btn-o" id="lnkPCloud" href="https://u.pcloud.com/#/puplink?code=Gy9XZfFigWG3uSrXkSCzklLTnDXHr5hh7" target="_blank" rel="noopener" aria-label="pCloudで開く" title="pCloudで開く">
+          <span data-icon="upload" data-size="18"></span>
+        </a>
+        <button class="btn btn-p" id="btnReset" type="button" aria-label="新規作成" title="新しい請求書">
+          <span data-icon="refresh" data-size="18"></span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>
