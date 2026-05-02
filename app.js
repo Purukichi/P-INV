@@ -661,12 +661,11 @@ function showSuccess(uploadResult){
   $('sNo').textContent = invNo;
   const us = $('upStatus');
   const linkLine = `<br><a class="lk" href="${PCLOUD_LINK}" target="_blank" rel="noopener">${PCLOUD_LINK}</a>`;
+  const sentMsg = `<span style="margin-left:6px;">送信が完了しました ＞ ⇀ ＜<br>請求書PDFも保管お願いいたします！</span>`;
   if (uploadResult.ok && uploadResult.verified){
-    us.innerHTML = `${svgIcon('check',14)}<span style="margin-left:6px;">pCloudへ送信しました（受信を確認）</span>`;
+    us.innerHTML = `${svgIcon('check',14)}${sentMsg}`;
   } else if (uploadResult.ok){
-    // 送信はしたが応答が読めない（CORS の typical なケース）。
-    // ブラウザは送信自体を完了させているので、送信済みとして扱う。
-    us.innerHTML = `${svgIcon('check',14)}<span style="margin-left:6px;">pCloudへ送信しました。受信状況はpCloud側でご確認ください。${linkLine}</span>`;
+    us.innerHTML = `${svgIcon('check',14)}${sentMsg}`;
   } else {
     us.innerHTML = `${svgIcon('warning',14)}<span style="margin-left:6px;">自動送信できませんでした。PDFはダウンロード済みです。下記リンクから手動でアップロードしてください。${linkLine}</span>`;
   }
