@@ -7,8 +7,8 @@
 <title>P-INV</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600&family=Noto+Sans+JP:wght@200;300;400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=2.0.1">
+<link href="https://fonts.googleapis.com/css2?family=Doto:wght@600;700;800&family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css?v=3.0.0">
 <script>try{var t=localStorage.getItem('pinv-theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -32,7 +32,6 @@
   <div class="hdr-in">
     <div class="brand">
       <span class="logo">P&#8209;INV</span>
-      <span class="tagline">INVOICE</span>
     </div>
     <button class="theme-toggle" id="themeToggle" type="button" aria-label="テーマ切替" title="ライト/ダーク切替">
       <span data-icon="sun" data-size="17" class="t-sun"></span>
@@ -59,6 +58,7 @@
   <!-- ══ STEP 1 ══ -->
   <section class="sec active" id="section1">
     <div class="ph">
+      <div class="eyebrow">STEP 01 / 03</div>
       <h1>請求情報の入力</h1>
       <p>Purukichi 宛の請求書を作成します。<span class="req">*</span> は必須項目です。</p>
     </div>
@@ -181,10 +181,11 @@
   <!-- ══ STEP 2 ══ -->
   <section class="sec" id="section2">
     <div class="ph">
+      <div class="eyebrow">STEP 02 / 03</div>
       <h1>作業明細</h1>
       <p>作業内容を選ぶと推奨の税率が自動で設定されます。</p>
     </div>
-    <div class="card">
+    <div class="card card-plain">
       <div id="rowsContainer"></div>
       <button class="btn btn-dashed btn-block" id="btnAddRow" type="button">
         <span data-icon="plus" data-size="16"></span><span>明細を追加</span>
@@ -230,6 +231,7 @@
   <!-- ══ STEP 3 ══ -->
   <section class="sec" id="section3">
     <div class="ph">
+      <div class="eyebrow">STEP 03 / 03</div>
       <h1>内容の確認</h1>
       <p>「発行する」を押すとPDFをダウンロードし、Purukichiへ自動送信します。</p>
     </div>
@@ -271,6 +273,6 @@
 
 </main>
 
-<script src="app.js?v=2.0.1"></script>
+<script src="app.js?v=3.0.0"></script>
 </body>
 </html>
