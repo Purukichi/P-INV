@@ -471,7 +471,6 @@ function buildInvHTML(){
   <div class="i-hdr">
     <div>
       <div class="i-ttl">請求書</div>
-      <div class="i-sub">INVOICE</div>
     </div>
     <table class="i-meta">
       <tr><td class="k">請求書番号</td><td class="v">${invNo}</td></tr>
