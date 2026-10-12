@@ -28,13 +28,14 @@ const ICONS = {
   'bank':        '<path d="M3 10h18M5 10v9M19 10v9M9 10v9M15 10v9M2 21h20M3 7l9-4 9 4"/>',
   'calendar':    '<rect x="3" y="5" width="18" height="16" rx="1"/><path d="M3 10h18M8 3v4M16 3v4"/>',
   'list':        '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+  'chevron-down':'<path d="m6 9 6 6 6-6"/>',
   'refresh':     '<path d="M3 12a9 9 0 0 1 15.5-6.3L21 8M21 3v5h-5M21 12a9 9 0 0 1-15.5 6.3L3 16M3 21v-5h5"/>',
 };
 
 function svgIcon(name, size = 18) {
   const body = ICONS[name];
   if (!body) return '';
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
 }
 
 function paintIcons(root = document) {
@@ -119,12 +120,19 @@ function genNo(){
   const mm = String(d.getMonth()+1).padStart(2,'0');
   return `${yy}${mm}-${String(Math.floor(Math.random()*9000)+1000)}`;
 }
-function showAle(id, msg){
+function showAle(id, msg, fields = []){
   const e = $(id);
-  e.textContent = msg;
+  e.innerHTML = `${svgIcon('warning',16)}<span>${esc(msg)}</span>`;
   e.classList.add('show');
   clearTimeout(e._t);
-  e._t = setTimeout(() => e.classList.remove('show'), 5000);
+  e._t = setTimeout(() => e.classList.remove('show'), 6000);
+  fields.forEach(f => {
+    const el = $(f); if (!el) return;
+    el.classList.add('invalid');
+    el.addEventListener('input', () => el.classList.remove('invalid'), { once:true });
+  });
+  if (fields.length && $(fields[0])) $(fields[0]).focus({ preventScroll:true });
+  e.scrollIntoView({ behavior:'smooth', block:'center' });
 }
 function fname(){
   const s = ($('senderName').value || $('senderYago').value || 'unknown').replace(/\s/g,'');
@@ -187,11 +195,16 @@ async function searchZip(){
 // ─────────────────────────────────────────────
 function jumpTo(n){
   document.querySelectorAll('.sec').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
-  const se = $('section' + n), st = $('step' + n);
+  document.querySelectorAll('.step').forEach(s => {
+    const k = +s.dataset.go;
+    s.classList.toggle('active', k === n);
+    s.classList.toggle('done', k < n || (k !== n && k <= maxStep));
+    if (k === n) s.setAttribute('aria-current','step'); else s.removeAttribute('aria-current');
+  });
+  const se = $('section' + n);
   if (se) se.classList.add('active');
-  if (st) st.classList.add('active');
   window.scrollTo({ top:0, behavior:'smooth' });
+  if (n === 3) requestAnimationFrame(fitPreview);
 }
 function goTo(n){
   if (n > maxStep){
@@ -203,12 +216,13 @@ function goTo(n){
   jumpTo(n);
 }
 function val1(){
-  if (!$('senderName').value.trim()){ showAle('ale1','氏名を入力してください。'); return; }
-  if (!$('bankName').value.trim() || !$('bankNum').value.trim() || !$('bankHolder').value.trim()){
-    showAle('ale1','銀行名・口座番号・口座名義を入力してください。'); return;
-  }
-  if (!$('issueDate').value || !$('dueDate').value){
-    showAle('ale1','発行日と支払期限を入力してください。'); return;
+  const missing = ['senderName','senderAddr','bankName','bankNum','bankHolder','issueDate','dueDate']
+    .filter(id => !$(id).value.trim());
+  if (missing.length){
+    const labels = { senderName:'氏名', senderAddr:'住所', bankName:'銀行名', bankNum:'口座番号',
+                     bankHolder:'口座名義', issueDate:'発行日', dueDate:'支払期限' };
+    showAle('ale1', `未入力の必須項目があります：${missing.map(k => labels[k]).join('・')}`, missing);
+    return;
   }
   maxStep = Math.max(maxStep, 2);
   jumpTo(2);
@@ -260,19 +274,13 @@ function toggleWork(id, work){
   if (r.works.includes(work)) r.works = r.works.filter(w => w !== work);
   else r.works.push(work);
   const btn = document.querySelector(`[data-wbtn="${id}_${work}"]`);
-  if (btn) btn.classList.toggle('on', r.works.includes(work));
+  if (btn){ btn.classList.toggle('on', r.works.includes(work)); btn.setAttribute('aria-pressed', r.works.includes(work)); }
   const sug = suggestTax(r.works);
   if (sug && sug.tax !== 'mixed') r.tax = sug.tax;
   const badge = document.querySelector(`[data-taxbadge="${id}"]`);
   if (badge){
-    if (!sug){ badge.innerHTML=''; badge.dataset.show='0'; }
-    else if (sug.tax === 'mixed'){
-      badge.innerHTML = `${svgIcon('warning',14)}<span><strong>${sug.label}：</strong>${sug.reason}</span>`;
-      badge.dataset.show = '1';
-    } else {
-      badge.innerHTML = `${svgIcon('info',14)}<span><strong>${sug.label}を推奨：</strong>${sug.reason}</span>`;
-      badge.dataset.show = '1';
-    }
+    badge.innerHTML = badgeHTML(r);
+    badge.dataset.show = sug ? '1' : '0';
   }
   if (sug && sug.tax !== 'mixed'){
     const sel = document.querySelector(`[data-taxsel="${id}"]`);
@@ -298,7 +306,9 @@ function setField(id, f, v){
   if (f === 'qty')   { const n = parseInt(v,10); r.qty   = (!isNaN(n) && n >= 1) ? n : 1; }
   else if (f === 'price') { const n = parseInt(v,10); r.price = (!isNaN(n) && n >= 0) ? n : 0; }
   else r[f] = v;
-  renderRows();
+  const amt = document.querySelector(`[data-amt="${id}"]`);
+  if (amt) amt.textContent = '¥' + fmtN(r.qty * r.price);
+  renderTots();
 }
 function setTax(id, v){
   const r = rows.find(r => r.id === id); if (!r) return;
@@ -314,59 +324,71 @@ function renderInvRegWarnings(){
     el.dataset.show = (hasReg && r.tax === '0') ? '1' : '0';
   });
 }
+function badgeHTML(r){
+  const sug = suggestTax(r.works);
+  if (!sug) return '';
+  if (sug.tax === 'mixed')
+    return `${svgIcon('warning',14)}<span><strong>${sug.label}</strong>　${sug.reason}。税率を手動で選択してください。</span>`;
+  return `${svgIcon('info',14)}<span><strong>${sug.label}を推奨</strong>　${sug.reason}</span>`;
+}
 function renderRows(){
   const cont = $('rowsContainer');
-  cont.innerHTML = rows.map(r => `
-    <div class="row-card">
+  cont.innerHTML = rows.map((r, i) => `
+    <div class="row-card" data-row="${r.id}">
+      <div class="row-head">
+        <span class="row-idx">ITEM ${String(i+1).padStart(2,'0')}</span>
+        ${rows.length > 1
+          ? `<button class="rm" data-act="remove" data-id="${r.id}" type="button" aria-label="この明細を削除" title="削除">${svgIcon('close',14)}</button>`
+          : ''}
+      </div>
       <div class="row-helper">
-        <div class="rh-f" style="min-width:200px;">
-          <label>楽曲名・案件名（任意）</label>
-          <input class="ci" type="text" value="${esc(r.song)}" placeholder="例：OP曲タイトル"
-            data-act="song" data-id="${r.id}">
-        </div>
         <div class="rh-f">
-          <label>作業内容（複数選択可）</label>
+          <label>作業内容<span class="lopt">複数選択可</span></label>
           <div class="rh-tags">
-            ${WORK_TYPES.map(w => `<button class="rh-tag${r.works.includes(w)?' on':''}" data-wbtn="${r.id}_${w}" data-act="work" data-id="${r.id}" data-work="${w}" type="button">${w}</button>`).join('')}
+            ${WORK_TYPES.map(w => `<button class="rh-tag${r.works.includes(w)?' on':''}" data-wbtn="${r.id}_${w}" data-act="work" data-id="${r.id}" data-work="${w}" type="button" aria-pressed="${r.works.includes(w)}">${w}</button>`).join('')}
           </div>
         </div>
-        <button class="rh-reflect" data-act="reflect" data-id="${r.id}" type="button" title="楽曲名・作業内容を品名に反映">
-          ${svgIcon('arrow-down',16)}
-        </button>
+        <div class="rh-f">
+          <label for="song_${r.id}">楽曲名・案件名<span class="lopt">任意</span></label>
+          <input class="ci" id="song_${r.id}" type="text" value="${esc(r.song)}" placeholder="例：OP曲タイトル"
+            data-act="song" data-id="${r.id}">
+        </div>
       </div>
-      <div class="suggest-badge" data-taxbadge="${r.id}"></div>
-      <div class="row-grid">
-        <div class="row-cell">
-          <div class="cl">品名</div>
-          <input class="ci" type="text" value="${esc(r.name)}" placeholder="作業内容・品目名"
-            data-nameinp="${r.id}" data-act="name" data-id="${r.id}">
+      <div class="suggest-badge" data-taxbadge="${r.id}" data-show="${r.works.length ? 1 : 0}">${badgeHTML(r)}</div>
+      <div class="row-body">
+        <div class="row-grid">
+          <div class="f name">
+            <label for="name_${r.id}">品名 <span class="req">*</span></label>
+            <div class="name-row">
+              <input class="ci" id="name_${r.id}" type="text" value="${esc(r.name)}" placeholder="請求書に記載する品目名"
+                data-nameinp="${r.id}" data-act="name" data-id="${r.id}">
+              <button class="rh-reflect" data-act="reflect" data-id="${r.id}" type="button" title="楽曲名・作業内容から品名を作成">
+                ${svgIcon('arrow-down',14)}<span>自動入力</span>
+              </button>
+            </div>
+          </div>
+          <div class="f tax">
+            <label for="tax_${r.id}">税率</label>
+            <select class="ci" id="tax_${r.id}" data-taxsel="${r.id}" data-act="tax" data-id="${r.id}">
+              <option value="0"  ${r.tax==='0' ?'selected':''}>非課税</option>
+              <option value="10" ${r.tax==='10'?'selected':''}>10%</option>
+              <option value="8"  ${r.tax==='8' ?'selected':''}>8%</option>
+            </select>
+          </div>
+          <div class="f">
+            <label for="qty_${r.id}">数量</label>
+            <input class="ci ci-r" id="qty_${r.id}" type="number" inputmode="numeric" value="${r.qty}" min="1" step="1"
+              data-act="qty" data-id="${r.id}">
+          </div>
+          <div class="f">
+            <label for="price_${r.id}">単価（円）</label>
+            <input class="ci ci-r" id="price_${r.id}" type="number" inputmode="numeric" value="${r.price || ''}" min="0" step="1" placeholder="0"
+              data-act="price" data-id="${r.id}">
+          </div>
         </div>
-        <div class="row-cell">
-          <div class="cl">税率</div>
-          <select class="ci" data-taxsel="${r.id}" data-act="tax" data-id="${r.id}">
-            <option value="0"  ${r.tax==='0' ?'selected':''}>非課税</option>
-            <option value="10" ${r.tax==='10'?'selected':''}>10%</option>
-            <option value="8"  ${r.tax==='8' ?'selected':''}>8%</option>
-          </select>
-        </div>
-        <div class="row-cell">
-          <div class="cl">数量</div>
-          <input class="ci ci-r" type="number" value="${r.qty}" min="1" step="1"
-            data-act="qty" data-id="${r.id}">
-        </div>
-        <div class="row-cell">
-          <div class="cl">単価</div>
-          <input class="ci ci-r" type="number" value="${r.price}" min="0" step="1"
-            data-act="price" data-id="${r.id}">
-        </div>
-        <div class="row-cell row-amt">
-          <div class="cl">小計</div>
-          <div class="av">¥${fmtN(r.qty * r.price)}</div>
-        </div>
-        <div class="row-cell row-rm">
-          ${rows.length > 1
-            ? `<button class="rm" data-act="remove" data-id="${r.id}" type="button" title="削除">${svgIcon('close',14)}</button>`
-            : ''}
+        <div class="row-amt">
+          <span class="cl">小計</span>
+          <span class="av" data-amt="${r.id}">¥${fmtN(r.qty * r.price)}</span>
         </div>
       </div>
       <div class="invreg-warn" data-invwarn="${r.id}">
@@ -400,6 +422,7 @@ function renderTots(){
   if (t.t8)  h += `<div class="tr"><span class="tl">消費税（8%）</span><span class="tv">¥${fmtN(t.t8)}</span></div>`;
   h += `<div class="tr gd"><span class="tl">合計（税込）</span><span class="tv">¥${fmtN(t.total)}</span></div>`;
   $('tots').innerHTML = h;
+  if ($('barTotal')) $('barTotal').textContent = '¥' + fmtN(t.total);
 }
 
 // ─────────────────────────────────────────────
@@ -410,17 +433,19 @@ function buildInvHTML(){
   const reg  = $('invReg').value.trim();
   const yago = $('senderYago').value.trim();
   const name = $('senderName').value.trim();
-  const senderLine = yago ? `${esc(yago)}　${esc(name)}` : `${esc(name)}`;
+  const branch = $('bankBranch').value.trim();
   const bank = [
-    $('bankName').value,
-    $('bankBranch').value ? $('bankBranch').value + '支店' : '',
-    $('bankType').value + '　' + $('bankNum').value,
-    '口座名義：' + $('bankHolder').value,
-  ].filter(Boolean).join('　／　');
+    $('bankName').value.trim(),
+    branch ? (/(支店|出張所|営業部)$/.test(branch) ? branch : branch + '支店') : '',
+    `${$('bankType').value}　${$('bankNum').value.trim()}`,
+    `口座名義　${$('bankHolder').value.trim()}`,
+  ].filter(Boolean).map(esc).join('<span class="sep">/</span>');
   const notes = $('notes').value.trim();
+  const due = toJP($('dueDate').value);
 
-  const irows = rows.filter(r => r.name.trim()).map(r => `
+  const irows = rows.filter(r => r.name.trim()).map((r, i) => `
     <tr>
+      <td class="no">${i + 1}</td>
       <td>${esc(r.name)}</td>
       <td class="rt">${r.tax==='0' ? '非課税' : r.tax + '%'}</td>
       <td class="rt">${r.qty}</td>
@@ -436,61 +461,65 @@ function buildInvHTML(){
   if (t.t8)  trows += `<tr><td class="tl">消費税（8%）</td><td class="tv">¥${fmtN(t.t8)}</td></tr>`;
   trows += `<tr class="gd"><td class="tl">合計（税込）</td><td class="tv">¥${fmtN(t.total)}</td></tr>`;
 
+  const senderLines = [
+    $('senderAddr').value.trim(),
+    $('senderPhone').value.trim() ? 'TEL　' + $('senderPhone').value.trim() : '',
+    $('senderEmail').value.trim(),
+  ].filter(Boolean).map(esc).join('<br>');
+
   return `
   <div class="i-hdr">
     <div>
       <div class="i-ttl">請求書</div>
-      <div class="i-no">番号：${invNo}</div>
-      ${reg ? `<div class="i-reg">登録番号：${esc(reg)}</div>` : ''}
+      <div class="i-sub">INVOICE</div>
     </div>
-    <div class="i-dates">
-      <div><span class="dlb">発行日</span><strong>${toJP($('issueDate').value)}</strong></div>
-      <div><span class="dlb">支払期限</span><strong>${toJP($('dueDate').value)}</strong></div>
+    <table class="i-meta">
+      <tr><td class="k">請求書番号</td><td class="v">${invNo}</td></tr>
+      <tr><td class="k">発行日</td><td class="v">${toJP($('issueDate').value)}</td></tr>
+    </table>
+  </div>
+  <div class="i-par">
+    <div class="i-to">
+      <div class="i-ptl">請求先</div>
+      <div class="i-pn">${esc(CLIENT.yago)}　${esc(CLIENT.name)}<span class="sama">様</span></div>
+      <div class="i-pd">${esc(CLIENT.addr)}<br>TEL　${esc(CLIENT.tel)}<br>${esc(CLIENT.mail)}</div>
+    </div>
+    <div class="i-from">
+      <div class="i-ptl">請求元</div>
+      ${yago ? `<div class="i-pd">${esc(yago)}</div>` : ''}
+      <div class="i-pn">${esc(name)}</div>
+      <div class="i-pd">${senderLines}</div>
+      ${reg ? `<div class="i-reg">登録番号　${esc(reg)}</div>` : ''}
     </div>
   </div>
   <div class="i-ban">
-    <div class="ll">
+    <div>
       <div class="lb">ご請求金額（税込）</div>
-      <div class="am">¥ ${fmtN(t.total)}</div>
+      <div class="am"><small>¥</small>${fmtN(t.total)}</div>
     </div>
     <div class="rr">
       <div class="lb">お支払期限</div>
-      <div class="vl">${toJP($('dueDate').value)}</div>
-    </div>
-  </div>
-  <div class="i-par">
-    <div class="i-pt">
-      <div class="i-ptl">請求先</div>
-      <div class="i-pn">${esc(CLIENT.yago)}　${esc(CLIENT.name)}　様</div>
-      <div class="i-pd">${esc(CLIENT.addr)}<br>電話：${esc(CLIENT.tel)}<br>${esc(CLIENT.mail)}</div>
-    </div>
-    <div class="i-pt">
-      <div class="i-ptl">請求元</div>
-      <div class="i-pn">${senderLine}</div>
-      <div class="i-pd">
-        ${$('senderAddr').value  ? esc($('senderAddr').value)  + '<br>' : ''}
-        ${$('senderPhone').value ? '電話：' + esc($('senderPhone').value) + '<br>' : ''}
-        ${$('senderEmail').value ? esc($('senderEmail').value) : ''}
-      </div>
+      <div class="vl">${due}</div>
     </div>
   </div>
   <table class="i-tbl">
     <thead><tr>
-      <th style="width:42%;text-align:left;">品目・作業内容</th>
-      <th style="width:10%;text-align:right;">税率</th>
-      <th style="width:10%;text-align:right;">数量</th>
-      <th style="width:18%;text-align:right;">単価</th>
-      <th style="width:20%;text-align:right;">金額</th>
+      <th style="text-align:left;">No.</th>
+      <th style="text-align:left;">品目・作業内容</th>
+      <th style="width:11%;text-align:right;">税率</th>
+      <th style="width:9%;text-align:right;">数量</th>
+      <th style="width:16%;text-align:right;">単価</th>
+      <th style="width:18%;text-align:right;">金額</th>
     </tr></thead>
     <tbody>${irows}</tbody>
   </table>
   <div class="i-tot-w"><table class="i-tot">${trows}</table></div>
   <div class="i-bnk">
     <div class="i-bnkt">お振込先</div>
-    <div class="i-bnkb">${esc(bank)}</div>
+    <div class="i-bnkb">${bank}</div>
   </div>
-  ${notes ? `<div class="i-note"><strong>備考：</strong>${esc(notes)}</div>` : ''}
-  <div class="i-ftr">本請求書は正式な会計書類です。発行日より５年間の保存を推奨します。</div>`;
+  ${notes ? `<div class="i-note"><div class="i-bnkt">備考</div>${esc(notes)}</div>` : ''}
+  <div class="i-ftr">本請求書は正式な会計書類です。発行日より5年間の保存を推奨します。</div>`;
 }
 
 function buildInvArea(){
@@ -499,23 +528,26 @@ function buildInvArea(){
 function buildPreview(){
   const pw = $('prevWrap');
   pw.innerHTML = '';
-  const src = $('inv-area');
-  const clone = src.cloneNode(true);
+  const clone = $('inv-area').cloneNode(true);
   clone.removeAttribute('id');
-  clone.style.cssText = "background:#fff;width:794px;padding:60px 64px;font-family:'Inter','Noto Sans JP',sans-serif;font-weight:300;font-size:11.5px;color:#0D0D0D;line-height:1.7;";
-  const cardW = pw.getBoundingClientRect().width || 760;
-  const sc = Math.min(1, (cardW - 2) / 794);
-  const outer = document.createElement('div');
-  outer.style.cssText = `width:${Math.floor(794 * sc)}px;overflow:hidden;`;
+  clone.classList.add('inv-doc');
+  const paper = document.createElement('div');
+  paper.className = 'prev-paper';
   const inner = document.createElement('div');
-  inner.style.cssText = `transform:scale(${sc});transform-origin:top left;width:794px;`;
+  inner.style.cssText = 'transform-origin:top left;width:794px;';
   inner.appendChild(clone);
-  outer.appendChild(inner);
-  pw.appendChild(outer);
-  requestAnimationFrame(() => {
-    const h = inner.getBoundingClientRect().height;
-    outer.style.height = h + 'px';
-  });
+  paper.appendChild(inner);
+  pw.appendChild(paper);
+  fitPreview();
+}
+function fitPreview(){
+  const pw = $('prevWrap');
+  const paper = pw.querySelector('.prev-paper');
+  if (!paper || !pw.offsetParent) return;
+  const inner = paper.firstChild;
+  const sc = Math.min(1, pw.clientWidth / 794);
+  inner.style.transform = `scale(${sc})`;
+  paper.style.height = Math.ceil(inner.scrollHeight * sc) + 'px';
 }
 
 // ─────────────────────────────────────────────
@@ -616,7 +648,7 @@ async function dlPDF(){
   const ov = $('pdfo');
   const msg = $('pmsg');
   ov.classList.add('show');
-  msg.textContent = 'PDF';
+  msg.textContent = 'PDFを作成中…';
   try {
     const out = await generatePDF({ download: true });
     return out;
@@ -634,7 +666,7 @@ async function issueInvoice(){
   const ov = $('pdfo');
   const msg = $('pmsg');
   ov.classList.add('show');
-  msg.textContent = 'PDF';
+  msg.textContent = 'PDFを作成中…';
 
   let pdfOut = null;
   let uploadResult = { ok:false, verified:false, error:null };
@@ -649,7 +681,7 @@ async function issueInvoice(){
   }
 
   if (pdfOut) {
-    msg.textContent = '送信中';
+    msg.textContent = 'Purukichiへ送信中…';
     uploadResult = await uploadToPCloud(pdfOut.blob, pdfOut.filename);
   }
 
@@ -661,13 +693,13 @@ function showSuccess(uploadResult){
   $('sNo').textContent = invNo;
   const us = $('upStatus');
   const linkLine = `<br><a class="lk" href="${PCLOUD_LINK}" target="_blank" rel="noopener">${PCLOUD_LINK}</a>`;
-  const sentMsg = `<span style="margin-left:6px;">送信が完了しました ＞ ⇀ ＜<br>請求書PDFも保管お願いいたします！</span>`;
+  const sentMsg = `<span>送信が完了しました ＞ ⇀ ＜<br>請求書PDFも保管お願いいたします！</span>`;
   if (uploadResult.ok && uploadResult.verified){
-    us.innerHTML = `${svgIcon('check',14)}${sentMsg}`;
+    us.innerHTML = `${svgIcon('check',16)}${sentMsg}`;
   } else if (uploadResult.ok){
-    us.innerHTML = `${svgIcon('check',14)}${sentMsg}`;
+    us.innerHTML = `${svgIcon('check',16)}${sentMsg}`;
   } else {
-    us.innerHTML = `${svgIcon('warning',14)}<span style="margin-left:6px;">自動送信できませんでした。PDFはダウンロード済みです。下記リンクから手動でアップロードしてください。${linkLine}</span>`;
+    us.innerHTML = `${svgIcon('warning',16)}<span>自動送信できませんでした。PDFはダウンロード済みです。下記リンクから手動でアップロードしてください。${linkLine}</span>`;
   }
   paintIcons(us);
   us.classList.add('show');
@@ -712,14 +744,18 @@ function bindRowDelegation(){
     if (!act || !id) return;
     if (act === 'name')  setName(id, t.value);
     else if (act === 'song')  setSong(id, t.value);
+    else if (act === 'qty' || act === 'price') setField(id, act, t.value);
   });
   cont.addEventListener('change', (e) => {
     const t = e.target;
     const act = t.dataset.act, id = +t.dataset.id;
     if (!act || !id) return;
     if (act === 'tax')   setTax(id, t.value);
-    else if (act === 'qty')   setField(id, 'qty',   t.value);
-    else if (act === 'price') setField(id, 'price', t.value);
+    else if (act === 'qty' || act === 'price'){
+      setField(id, act, t.value);
+      const r = rows.find(r => r.id === id);
+      if (r) t.value = act === 'qty' ? r.qty : (r.price || '');
+    }
   });
   cont.addEventListener('click', (e) => {
     const t = e.target.closest('[data-act]');
@@ -759,6 +795,8 @@ function bindUI(){
   $('btnAddRow').addEventListener('click', addRow);
   $('btnRedl').addEventListener('click', dlPDF);
   $('btnReset').addEventListener('click', resetTool);
+  let rz;
+  window.addEventListener('resize', () => { cancelAnimationFrame(rz); rz = requestAnimationFrame(fitPreview); });
 }
 
 // ─────────────────────────────────────────────
